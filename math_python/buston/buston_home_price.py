@@ -9,6 +9,7 @@
 @time: 2020/4/1 23:28
 @desc:
 '''
+import time
 
 import numpy as np
 import pandas as pd
@@ -17,6 +18,24 @@ from sklearn.datasets import load_boston
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import threading
+
+
+class MyThread(threading.Thread):
+
+    def __init__(self, func, args):
+        super(MyThread, self).__init__()
+
+        self.func = func
+        self.args = args
+
+    def run(self):
+        self.result = self.func(*self.args)
+
+    def get_result(self):
+        try:
+            return self.result
+        except Exception:
+            return None
 
 
 class LinearRegression(object):
@@ -138,7 +157,7 @@ class LinearRegression(object):
             for (data, result) in zip(mini_train_data, mini_train_result):
                 g = (result - data.dot(self.Theta)) * data
                 gradient_increasment.append(g)
-            avg_g = np.average(gradient_increasment,0)
+            avg_g = np.average(gradient_increasment, 0)
             avg_g = avg_g.reshape((len(avg_g), 1))
             self.Theta = self.Theta + alpha * avg_g
 
@@ -237,11 +256,28 @@ def createModel(train_data, train_result, iter=30000):
 
     alpha = 0.001
     batch_size = 64
+    ticks = time.time()
+    print(ticks)
+    bgd_t1 = MyThread(lr_BGD.train_BGD, (iter, alpha))
+    sgd_t2 = MyThread(lr_SGD.train_SGD, (iter, alpha))
+    mbgd_t3 = MyThread(lr_MBGD.train_MBGD, (iter, batch_size, alpha))
+    bgd_t1.start()
+    sgd_t2.start()
+    mbgd_t3.start()
+    bgd_t1.join()
+    sgd_t2.join()
+    mbgd_t3.join()
 
-    BGD_train_cost = lr_BGD.train_BGD(iter, alpha)
-    SGD_train_cost = lr_SGD.train_SGD(iter, alpha)
-    MBGD_train_cost = lr_MBGD.train_MBGD(iter, batch_size, alpha)
-   # lr_NE = lr_NormalEquation.getNormalEquation()
+    BGD_train_cost = bgd_t1.get_result()
+    SGD_train_cost = sgd_t2.get_result()
+    MBGD_train_cost = mbgd_t3.get_result()
+
+    # BGD_train_cost = lr_BGD.train_BGD(iter, alpha)
+    # SGD_train_cost = lr_SGD.train_SGD(iter, alpha)
+    # MBGD_train_cost = lr_MBGD.train_MBGD(iter, batch_size, alpha)
+    ticks2 = time.time()
+    print(ticks2 - ticks)
+    # lr_NE = lr_NormalEquation.getNormalEquation()
 
     return BGD_train_cost, SGD_train_cost, MBGD_train_cost  # , lr_NE
 
@@ -267,8 +303,16 @@ def costView(BGD_train_cost, SGD_train_cost, MBGD_train_cost, iter=30000):
 
 
 if __name__ == '__main__':
+    print("哈哈哈 开始了 %d", time.time())
     train_data, test_data, train_result, test_result = handleData()
 
     showPhoto(test_data, test_result)
+    ticks = time.time()
     BGD_train_cost, SGD_train_cost, MBGD_train_cost = createModel(train_data, train_result)
+    print(time.time() - ticks)
+
+    ticks = time.time()
     costView(BGD_train_cost, SGD_train_cost, MBGD_train_cost)
+    print(time.time() - ticks)
+    print("wo艹 结束了 %d", time.time())
+    # 非多线程下一共114秒
