@@ -10,7 +10,7 @@
 @desc:
 '''
 import time
-
+from multiprocessing import Pool
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -258,19 +258,32 @@ def createModel(train_data, train_result, iter=30000):
     batch_size = 64
     ticks = time.time()
     print(ticks)
-    bgd_t1 = MyThread(lr_BGD.train_BGD, (iter, alpha))
-    sgd_t2 = MyThread(lr_SGD.train_SGD, (iter, alpha))
-    mbgd_t3 = MyThread(lr_MBGD.train_MBGD, (iter, batch_size, alpha))
-    bgd_t1.start()
-    sgd_t2.start()
-    mbgd_t3.start()
-    bgd_t1.join()
-    sgd_t2.join()
-    mbgd_t3.join()
+    # bgd_t1 = MyThread(lr_BGD.train_BGD, (iter, alpha))
+    # sgd_t2 = MyThread(lr_SGD.train_SGD, (iter, alpha))
+    # mbgd_t3 = MyThread(lr_MBGD.train_MBGD, (iter, batch_size, alpha))
+    # bgd_t1.start()
+    # sgd_t2.start()
+    # mbgd_t3.start()
+    # bgd_t1.join()
+    # sgd_t2.join()
+    # mbgd_t3.join()
+    #
+    # BGD_train_cost = bgd_t1.get_result()
+    # SGD_train_cost = sgd_t2.get_result()
+    # MBGD_train_cost = mbgd_t3.get_result()
+    """
+    多进程
+    """
+    return_list = list()
+    P = Pool(3)
+    BGD_train_cost = P.apply_async(lr_BGD.train_BGD, (iter, alpha))
 
-    BGD_train_cost = bgd_t1.get_result()
-    SGD_train_cost = sgd_t2.get_result()
-    MBGD_train_cost = mbgd_t3.get_result()
+    SGD_train_cost = P.apply_async(lr_SGD.train_SGD, (iter, alpha))
+    MBGD_train_cost = P.apply_async(lr_MBGD.train_MBGD, (iter, batch_size, alpha))
+
+    P.close()
+    P.join()
+
 
     # BGD_train_cost = lr_BGD.train_BGD(iter, alpha)
     # SGD_train_cost = lr_SGD.train_SGD(iter, alpha)
