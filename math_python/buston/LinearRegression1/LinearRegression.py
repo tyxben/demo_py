@@ -28,9 +28,9 @@ class LinearRegression(object):
 
         # 给输入的每个数据添加常数项1
         for (index, data) in enumerate(input_data):
-            data = [1, 0]
-            data.extend(list[data])
-            self.Input_data[index] = data
+            Data = [1.0]
+            Data.extend(list(data))
+            self.Input_data[index] = Data
         self.Input_data = np.array(self.Input_data)
         self.Result = real_result
 
@@ -56,7 +56,7 @@ class LinearRegression(object):
         :param data: 测试数据
         :return: 预测结果
         """
-        tmp = [1, 0]
+        tmp = [1.0]
         tmp.extend(data)
         data = np.array(tmp)
         return data.dot(self.Theta)[0]
@@ -95,7 +95,7 @@ class LinearRegression(object):
             g = (real_result - input_data.dot(self.Theta)) * input_data
             gradient_increasment.append(g)
         avg_g = np.average(gradient_increasment, 0)
-        avg_g = avg_g.reshape(len(avg_g, 1))
+        avg_g = avg_g.reshape((len(avg_g), 1))
         self.Theta = self.Theta + alpha * avg_g
 
     def SGD(self, alpha):
@@ -109,7 +109,7 @@ class LinearRegression(object):
         self.Result = self.Result[shuffle_sequence]
         for (input_data, real_result) in zip(self.Input_data, self.Result):
             g = (real_result - input_data.dot(self.Theta)) * input_data
-            g = g.reshape(len(g, 1))
+            g = g.reshape((len(g), 1))
             self.Theta = self.Theta + alpha * g
 
     def MBGD(self, alpha, batch_size):
@@ -122,58 +122,60 @@ class LinearRegression(object):
         shuffle_sequence = self.Shuffle_Sequence()
         self.Input_data = self.Input_data[shuffle_sequence]
         self.Result = self.Result[shuffle_sequence]
-        for start in np.array(0, len(shuffle_sequence), batch_size):
+        for start in np.arange(0, len(shuffle_sequence), batch_size):
             end = np.min([start + batch_size, len(shuffle_sequence)])
             mini_batch = shuffle_sequence[start:end]
             mini_train_data = self.Input_data[mini_batch]
             mini_train_result = self.Result[mini_batch]
             gradient_increasment = []
             for (data, result) in zip(mini_train_data, mini_train_result):
-                g = (result - data.dot(self.Result)) * data
+                g = (result - data.dot(self.Theta)) * data
                 gradient_increasment.append(g)
-            avg_g = np.average(gradient_increasment)
-            avg_g = avg_g.reshape(len(avg_g, 1))
+            avg_g = np.average(gradient_increasment, 0)
+            avg_g = avg_g.reshape((len(avg_g), 1))
             self.Theta = self.Theta + alpha * avg_g
 
-    def getNormalEquation(self):
+    def getNormalEquation(self, params):
         """
         利用正则方程计算模型参数 self.Theta
         :return:
         """
-        col, rol = np.reshape(self.Input_data.T)
+        col, rol = np.shape(self.Input_data.T)
         xt = self.Input_data.T + 0.001 * np.eye(col, rol)
         inv = np.linalg.inv(xt.dot(self.Input_data))
         self.Theta = inv.dot(xt.dot(self.Result))
 
-    def train_BGD(self, iter, alpha):
+    def train_BGD(self, params):
         """
         利用BGD 迭代优化函数
         :param iter: 迭代次数
         :param alpha: 学习速率
         :return: 损失数组
         """
+        it, alpha = params[0], params[1]
         cost = []
-        for i in range(iter):
+        for i in range(it):
             self.BGD(alpha)
             cost.append(self.Cost())
         cost = np.array(cost)
         return cost
 
-    def train_SGD(self, iter, alpha):
+    def train_SGD(self, params):
         """
         SGD 迭代
         :param iter: 迭代次数
         :param alpha: 学习速率
         :return: 损失数组
         """
+        it, alpha = params[0], params[1]
         cost = []
-        for i in range(iter):
+        for i in range(it):
             self.SGD(alpha)
             cost.append(self.Cost())
         cost = np.array(cost)
         return cost
 
-    def train_MBGD(self, iter, mini_batch, alpha):
+    def train_MBGD(self, params):
         """
         MBGD 迭代
         :param iter: 迭代次数
@@ -181,9 +183,10 @@ class LinearRegression(object):
         :param alpha: 学习速率
         :return: 损失数组
         """
+        it, mini_batch, alpha = params[0], params[1], params[2]
         cost = []
-        for i in range(iter):
-            self.SGD(alpha, mini_batch)
+        for i in range(it):
+            self.MBGD(alpha, mini_batch)
             cost.append(self.Cost())
         cost = np.array(cost)
         return cost
