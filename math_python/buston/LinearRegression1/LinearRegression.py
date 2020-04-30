@@ -5,11 +5,37 @@
 @license: (C) Copyright 2019-2020, Node Supply Chain Manager Corporation Limited.
 @contact: wty229027377@gmail.com
 @software: pycharm
-@file: LinearRegression.py
-@time: 2020/4/2 0:57
+@file: buston_home_price.py
+@time: 2020/4/1 23:28
 @desc:
 '''
+import time
+from multiprocessing import Pool
 import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.datasets import load_boston
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import threading
+
+
+class MyThread(threading.Thread):
+
+    def __init__(self, func, args):
+        super(MyThread, self).__init__()
+
+        self.func = func
+        self.args = args
+
+    def run(self):
+        self.result = self.func(*self.args)
+
+    def get_result(self):
+        try:
+            return self.result
+        except Exception:
+            return None
 
 
 class LinearRegression(object):
@@ -28,9 +54,9 @@ class LinearRegression(object):
 
         # 给输入的每个数据添加常数项1
         for (index, data) in enumerate(input_data):
-            data = [1, 0]
-            data.extend(list[data])
-            self.Input_data[index] = data
+            Data = [1.0]
+            Data.extend(list(data))
+            self.Input_data[index] = Data
         self.Input_data = np.array(self.Input_data)
         self.Result = real_result
 
@@ -95,7 +121,7 @@ class LinearRegression(object):
             g = (real_result - input_data.dot(self.Theta)) * input_data
             gradient_increasment.append(g)
         avg_g = np.average(gradient_increasment, 0)
-        avg_g = avg_g.reshape(len(avg_g, 1))
+        avg_g = avg_g.reshape((len(avg_g), 1))
         self.Theta = self.Theta + alpha * avg_g
 
     def SGD(self, alpha):
@@ -109,7 +135,7 @@ class LinearRegression(object):
         self.Result = self.Result[shuffle_sequence]
         for (input_data, real_result) in zip(self.Input_data, self.Result):
             g = (real_result - input_data.dot(self.Theta)) * input_data
-            g = g.reshape(len(g, 1))
+            g = g.reshape((len(g), 1))
             self.Theta = self.Theta + alpha * g
 
     def MBGD(self, alpha, batch_size):
@@ -122,17 +148,17 @@ class LinearRegression(object):
         shuffle_sequence = self.Shuffle_Sequence()
         self.Input_data = self.Input_data[shuffle_sequence]
         self.Result = self.Result[shuffle_sequence]
-        for start in np.array(0, len(shuffle_sequence), batch_size):
+        for start in np.arange(0, len(shuffle_sequence), batch_size):
             end = np.min([start + batch_size, len(shuffle_sequence)])
             mini_batch = shuffle_sequence[start:end]
             mini_train_data = self.Input_data[mini_batch]
             mini_train_result = self.Result[mini_batch]
             gradient_increasment = []
             for (data, result) in zip(mini_train_data, mini_train_result):
-                g = (result - data.dot(self.Result)) * data
+                g = (result - data.dot(self.Theta)) * data
                 gradient_increasment.append(g)
-            avg_g = np.average(gradient_increasment)
-            avg_g = avg_g.reshape(len(avg_g, 1))
+            avg_g = np.average(gradient_increasment, 0)
+            avg_g = avg_g.reshape((len(avg_g), 1))
             self.Theta = self.Theta + alpha * avg_g
 
     def getNormalEquation(self):
@@ -183,7 +209,123 @@ class LinearRegression(object):
         """
         cost = []
         for i in range(iter):
-            self.SGD(alpha, mini_batch)
+            self.MBGD(alpha, mini_batch)
             cost.append(self.Cost())
         cost = np.array(cost)
         return cost
+
+
+def Merge(data, col):
+    data = np.array(data).T
+    return pd.DataFrame(data, columns=col)
+
+
+def handleData():
+    inputData, resultData = load_boston(return_X_y=True)
+    inputData = np.array(inputData)[:, 5]
+    data = Merge([inputData, resultData], ['平均房间数目', '房价'])
+    data.to_excel(r'../originalData_buston.xlsx')
+    inputData = inputData.reshape((len(inputData), 1))
+    resultData = np.array(resultData).reshape((len(resultData), 1))
+
+    return train_test_split(inputData, resultData, test_size=0.1, random_state=50)
+
+
+def showPhoto(test_data, test_result):
+    mpl.rcParams['font.sans-serif'] = [u'simHei']
+    mpl.rcParams['axes.unicode_minus'] = False
+
+    col = ['真实房价']
+    plt.scatter(test_data, test_result, alpha=0.5, c='b', s=10)
+    plt.grid(True)
+    plt.legend(labels=col, loc='best')
+    plt.xlabel("房间数")
+    plt.ylabel("真实房价")
+    plt.savefig("../test_data_view.png", bbox_inches='tight')
+    plt.show()
+    plt.close()
+
+
+def createModel(train_data, train_result, iter=30000):
+    col = np.shape(train_data)[1] + 1
+    theta = np.random.random((col, 1))
+    lr_BGD = LinearRegression(train_data, train_result, theta)
+    lr_SGD = LinearRegression(train_data, train_result, theta)
+    lr_MBGD = LinearRegression(train_data, train_result, theta)
+    lr_NormalEquation = LinearRegression(train_data, train_result, theta)
+
+    alpha = 0.001
+    batch_size = 64
+    ticks = time.time()
+    print(ticks)
+    # bgd_t1 = MyThread(lr_BGD.train_BGD, (iter, alpha))
+    # sgd_t2 = MyThread(lr_SGD.train_SGD, (iter, alpha))
+    # mbgd_t3 = MyThread(lr_MBGD.train_MBGD, (iter, batch_size, alpha))
+    # bgd_t1.start()
+    # sgd_t2.start()
+    # mbgd_t3.start()
+    # bgd_t1.join()
+    # sgd_t2.join()
+    # mbgd_t3.join()
+    #
+    # BGD_train_cost = bgd_t1.get_result()
+    # SGD_train_cost = sgd_t2.get_result()
+    # MBGD_train_cost = mbgd_t3.get_result()
+    """
+    多进程
+    """
+    return_list = list()
+    P = Pool(3)
+    BGD_train_cost = P.apply_async(lr_BGD.train_BGD, (iter, alpha))
+
+    SGD_train_cost = P.apply_async(lr_SGD.train_SGD, (iter, alpha))
+    MBGD_train_cost = P.apply_async(lr_MBGD.train_MBGD, (iter, batch_size, alpha))
+
+    P.close()
+    P.join()
+
+
+    # BGD_train_cost = lr_BGD.train_BGD(iter, alpha)
+    # SGD_train_cost = lr_SGD.train_SGD(iter, alpha)
+    # MBGD_train_cost = lr_MBGD.train_MBGD(iter, batch_size, alpha)
+    ticks2 = time.time()
+    print(ticks2 - ticks)
+    # lr_NE = lr_NormalEquation.getNormalEquation()
+
+    return BGD_train_cost, SGD_train_cost, MBGD_train_cost  # , lr_NE
+
+
+def costView(BGD_train_cost, SGD_train_cost, MBGD_train_cost, iter=30000):
+    col = ['BGD', 'SGD', 'MBGD']
+    iter = np.arange(iter)
+    plt.plot(iter, BGD_train_cost, '-r')
+    plt.plot(iter, SGD_train_cost, '-b')
+    plt.plot(iter, MBGD_train_cost, '-k')
+    plt.grid(True)
+    plt.xlabel('迭代次数')
+    plt.ylabel('平均训练损失')
+    plt.legend(labels=col, loc='best')
+
+    plt.savefig("../train_cost_picture_buston.png", bbox_inches='tight')
+    plt.show()
+    plt.close()
+    train_cost = [BGD_train_cost, SGD_train_cost, MBGD_train_cost]
+    train_cost = Merge(train_cost, col)
+    train_cost.to_excel("../train_cost_buston.xlsx")
+    train_cost.describe().to_excel("../BGD_SGD_MBGD_cost_average.xlsx")
+
+
+if __name__ == '__main__':
+    print("哈哈哈 开始了 %d", time.time())
+    train_data, test_data, train_result, test_result = handleData()
+
+    showPhoto(test_data, test_result)
+    ticks = time.time()
+    BGD_train_cost, SGD_train_cost, MBGD_train_cost = createModel(train_data, train_result)
+    print(time.time() - ticks)
+
+    ticks = time.time()
+    costView(BGD_train_cost, SGD_train_cost, MBGD_train_cost)
+    print(time.time() - ticks)
+    print("wo艹 结束了 %d", time.time())
+    # 非多线程下一共114秒
